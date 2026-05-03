@@ -1,0 +1,16 @@
+github.com/josharian/native v1.1.0 h1:uuaP0hAbW7Y4l0ZRQ6C9zfb7Mg1mbFKry/xzDAfmkgk=
+github.com/josharian/native v1.1.0/go.mod h1:7X/raswPFr05uY3HiLlYeyQntB6OO7E/d2Cu7Bp8/GQ=
+github.com/mdlayher/arp v0.0.0-20220512170110-6706a2966875 h1:yvzOeoYB4GbPGJhom3yBBifzfgsFBdFKzAQFBoFNRoQ=
+github.com/mdlayher/arp v0.0.0-20220512170110-6706a2966875/go.mod h1:wJr6ZfGLT7SXh+kBzFh+yqWf9vZrDFSFNrSSMzBfSP0=
+github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118 h1:PizHyJEKVbp/6FhkPFmSHMOEBLlE9zMdXijuRlYpCco=
+github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118/go.mod h1:ZzVB4i5J0bMNzVPMGTbZxZcajW3YYXH18GpHrBl5FiY=
+github.com/mdlayher/packet v1.1.2 h1:3Up1NG6LZrsgDrfPbDQ0nTN0NolFCy+UPg2IxIEI4qU=
+github.com/mdlayher/packet v1.1.2/go.mod h1:GEt7Ll5SESE0n5OGGkKNZhwPuQHqHLTQ9J+EMTArTtU=
+github.com/mdlayher/socket v0.4.1 h1:eM9y2/jlbs1M615oshPQOHZzj6R6wMoJeKkOiLiGI1I=
+github.com/mdlayher/socket v0.4.1/go.mod h1:cAqeUD1QLUxMHVlEME5DaFPdZzGTBMMFGJRVCe0FBCQ=
+golang.org/x/net v0.26.0 h1:5K3Njcw06/l2y9vpGCSdcxWOYHOUk3dVNGDXN+FvAys=
+golang.org/x/net v0.26.0/go.mod h1:5YKkiSynbBIh3p6iOc/vibscux0x38BZDkn8sCUPxHE=
+golang.org/x/sync v0.7.0 h1:YsImfSBoP9QPYL0xyKJPq0gcaJdG3rInoqxTWbfQu9M=
+golang.org/x/sync v0.7.0/go.mod h1:Czt+wKu1gCyEFDUtn0jG5QVvpJ6rzVqr5aXyt9drQfk=
+golang.org/x/sys v0.21.0 h1:rF+pYz3DAGSQAxAu1CbC7catMghJzkLMXSqoEmEpuAY=
+golang.org/x/sys v0.21.0/go.mod h1:/VUhepiaJMbbeZIIzcGqYyhAIqz1NQ7ovZAswKjNqkE=

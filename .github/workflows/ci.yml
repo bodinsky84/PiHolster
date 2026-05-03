@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend:
+    name: Go — vet & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: go mod tidy
+        working-directory: apps/piholsterd
+        env:
+          CGO_ENABLED: "0"
+        run: go mod tidy
+
+      - name: go vet
+        run: go vet ./apps/piholsterd/...
+
+      - name: go test -race
+        run: go test -race -count=1 ./apps/piholsterd/...
+
+  frontend:
+    name: Web — lint & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm lint
+        run: pnpm --filter web lint
+
+      - name: pnpm build
+        run: pnpm --filter web build
+
+  cross-compile:
+    name: Cross-compile linux/arm/v7
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: go mod tidy
+        working-directory: apps/piholsterd
+        env:
+          CGO_ENABLED: "0"
+        run: go mod tidy
+
+      - name: Build for linux/arm/v7
+        env:
+          GOOS: linux
+          GOARCH: arm
+          GOARM: "7"
+          CGO_ENABLED: "0"
+        run: |
+          go build -trimpath -ldflags="-s -w" \
+            -o /dev/null \
+            ./apps/piholsterd/cmd/piholsterd

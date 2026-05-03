@@ -1,0 +1,33 @@
+# Copy this file to docker-compose.override.yml and adjust for your local setup.
+# docker-compose.override.yml is gitignored — changes here stay on your machine.
+#
+# Usage:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   # edit docker-compose.override.yml as needed
+#   docker compose up
+
+services:
+  piholsterd:
+    # Use a different local DNS port if 5353 is already in use
+    ports:
+      - "5354:5300/udp"
+      - "5354:5300/tcp"
+
+    # Override environment variables
+    environment:
+      DNS_PORT: "5300"
+      BLOCKLIST_PATH: /app/blocklists/ads.txt
+      # LOG_LEVEL: debug
+
+    # Mount a custom blocklist from your machine instead of the repo copy
+    # volumes:
+    #   - /path/to/my/blocklists:/app/blocklists:ro
+
+  web:
+    # Use a different local port if 8080 is already in use
+    ports:
+      - "3000:5173"
+
+    environment:
+      VITE_API_URL: http://piholsterd:8080
+      # VITE_API_URL: http://localhost:8081  # if piholsterd exposes an HTTP API on a different port

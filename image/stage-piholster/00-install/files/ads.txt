@@ -1,0 +1,25 @@
+# PiHolster curated ad-network blocklist
+# Format: hosts-format (0.0.0.0 <domain>)
+# Sources: manually curated from EasyList, StevenBlack/hosts, and Pi-hole default lists.
+# Last updated: 2026-05-01
+
+0.0.0.0 doubleclick.net
+0.0.0.0 googlesyndication.com
+0.0.0.0 adnxs.com
+0.0.0.0 ads.google.com
+0.0.0.0 adservice.google.com
+0.0.0.0 pagead2.googlesyndication.com
+0.0.0.0 adclick.g.doubleclick.net
+0.0.0.0 stats.g.doubleclick.net
+0.0.0.0 ad.doubleclick.net
+0.0.0.0 amazonadvertising.com
+0.0.0.0 aax.amazon-adsystem.com
+0.0.0.0 fls-na.amazon-adsystem.com
+0.0.0.0 adsystem.com
+0.0.0.0 taboola.com
+0.0.0.0 trc.taboola.com
+0.0.0.0 outbrain.com
+0.0.0.0 ads.outbrain.com
+0.0.0.0 criteo.com
+0.0.0.0 static.criteo.net
+0.0.0.0 ads.pubmatic.com

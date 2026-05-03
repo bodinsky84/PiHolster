@@ -1,0 +1,26 @@
+services:
+  piholsterd:
+    build:
+      context: apps/piholsterd
+      dockerfile: Dockerfile
+    ports:
+      - "5353:5300/udp"
+      - "5353:5300/tcp"
+    environment:
+      DNS_PORT: "5300"
+      BLOCKLIST_PATH: /app/blocklists/ads.txt
+    volumes:
+      - ./packages/blocklists:/app/blocklists:ro
+    restart: unless-stopped
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "8080:5173"
+    environment:
+      VITE_API_URL: http://piholsterd:8080
+    depends_on:
+      - piholsterd
+    restart: unless-stopped
