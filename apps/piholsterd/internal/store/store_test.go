@@ -30,6 +30,46 @@ func TestOpenAndMigrate(t *testing.T) {
 	}
 }
 
+// TestPragmasAreSet pins down the SQLite pragmas that US-21 depends on.
+// If a future change to Open() drops journal_mode=WAL or synchronous=NORMAL,
+// this test fails before the soak does.
+//
+// Skipped against :memory: for journal_mode (memory dbs report "memory"),
+// so we use a tempfile.
+func TestPragmasAreSet(t *testing.T) {
+	dbPath := t.TempDir() + "/pragma-test.db"
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { s.Close() })
+
+	var journalMode string
+	if err := s.db.QueryRow("PRAGMA journal_mode").Scan(&journalMode); err != nil {
+		t.Fatalf("read journal_mode: %v", err)
+	}
+	if journalMode != "wal" {
+		t.Errorf("journal_mode = %q, want %q (US-21 AC-1)", journalMode, "wal")
+	}
+
+	var synchronous int
+	if err := s.db.QueryRow("PRAGMA synchronous").Scan(&synchronous); err != nil {
+		t.Fatalf("read synchronous: %v", err)
+	}
+	// 1 = NORMAL, 2 = FULL. Both satisfy US-21; OFF (0) and EXTRA (3) do not.
+	if synchronous != 1 && synchronous != 2 {
+		t.Errorf("synchronous = %d, want 1 (NORMAL) or 2 (FULL) (US-21 AC-1)", synchronous)
+	}
+
+	var fk int
+	if err := s.db.QueryRow("PRAGMA foreign_keys").Scan(&fk); err != nil {
+		t.Fatalf("read foreign_keys: %v", err)
+	}
+	if fk != 1 {
+		t.Errorf("foreign_keys = %d, want 1", fk)
+	}
+}
+
 func TestUpsertAndListDevices(t *testing.T) {
 	s := openTestStore(t)
 

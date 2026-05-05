@@ -34,6 +34,13 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("store: enable WAL: %w", err)
 	}
+	// NORMAL is crash-safe under WAL and avoids fsync on every commit, which
+	// matters on the SD card piholsterd writes to. US-21 requires this be set
+	// explicitly so the value is verifiable.
+	if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store: set synchronous=NORMAL: %w", err)
+	}
 	if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("store: enable foreign keys: %w", err)
