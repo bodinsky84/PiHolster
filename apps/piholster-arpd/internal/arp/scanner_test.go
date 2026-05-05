@@ -2,6 +2,7 @@ package arp
 
 import (
 	"net"
+	"net/netip"
 	"testing"
 
 	mdarp "github.com/mdlayher/arp"
@@ -15,13 +16,16 @@ func TestParseARPReply(t *testing.T) {
 		t.Fatal(err)
 	}
 	ip := net.ParseIP("192.168.1.42").To4()
+	senderAddr, _ := netip.AddrFromSlice(ip)
+	targetRaw := net.ParseIP("192.168.1.1").To4()
+	targetAddr, _ := netip.AddrFromSlice(targetRaw)
 
 	pkt := &mdarp.Packet{
-		Operation:      mdarp.OperationReply,
+		Operation:          mdarp.OperationReply,
 		SenderHardwareAddr: mac,
-		SenderIP:       ip,
+		SenderIP:           senderAddr.Unmap(),
 		TargetHardwareAddr: make(net.HardwareAddr, 6),
-		TargetIP:       net.ParseIP("192.168.1.1").To4(),
+		TargetIP:           targetAddr.Unmap(),
 	}
 
 	dev := parseDevice(pkt)

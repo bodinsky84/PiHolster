@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"sync"
@@ -108,9 +109,13 @@ func (s *Scanner) probeSweep(ctx context.Context) {
 			return
 		default:
 		}
-		target := net.IP{base[0], base[1], base[2], byte(i)}
-		if err := s.client.Request(target); err != nil {
-			slog.Debug("arp: request failed", "target", target, "err", err)
+		targetIP := net.IP{base[0], base[1], base[2], byte(i)}
+		targetAddr, ok := netip.AddrFromSlice(targetIP)
+		if !ok {
+			continue
+		}
+		if err := s.client.Request(targetAddr.Unmap()); err != nil {
+			slog.Debug("arp: request failed", "target", targetIP, "err", err)
 		}
 	}
 }
