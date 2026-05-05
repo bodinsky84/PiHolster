@@ -4,15 +4,22 @@ PiHolster is an open source network-level ad and tracker blocker built for Raspb
 
 ## How to install
 
-1. Download the latest `.img.xz` image from the [Releases](https://github.com/piholster/piholster/releases) page.
-2. Burn the image to a microSD card (8 GB or larger) using [Raspberry Pi Imager](https://www.raspberrypi.com/software/) or `dd`:
+**Recommended — setup script (fastest):**
+
+1. Flash **Raspberry Pi OS Lite** to an SD card with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) (enable SSH in advanced settings).
+2. Boot the Pi, find its IP address (e.g. `192.168.1.100`).
+3. Run the setup script from this repo:
+   ```bash
+   bash scripts/setup-pi.sh 192.168.1.100
    ```
-   xz -dc piholster-vX.Y.Z.img.xz | sudo dd of=/dev/sdX bs=4M status=progress
-   ```
-3. Insert the SD card into your Raspberry Pi (3B+, 4, or Zero 2 W recommended).
-4. Connect the Pi to your router via Ethernet and power it on.
-5. Open `http://piholster.local` in any browser on your network.
-6. Point your router's DNS to the Pi's IP address to protect all devices automatically.
+4. Open `https://192.168.1.100/` in your browser, accept the self-signed cert, and log in.
+5. Point your router's DHCP DNS to the Pi's IP address.
+
+See [docs/INSTALL-PI.md](docs/INSTALL-PI.md) for the full step-by-step guide.
+
+**Alternative — pre-built SD image:**
+
+Download the latest `.img.xz` from the [Releases](https://github.com/piholster/piholster/releases) page and burn it to a microSD card.
 
 ## Requirements
 
@@ -56,10 +63,16 @@ Filen `docker-compose.override.yml` är gitignorerad och påverkar bara din loka
 ## Documentation
 
 See the [`docs/`](docs/) directory for:
+- [Installation guide — setup script](docs/INSTALL-PI.md)
+- [Backup and restore](docs/BACKUP.md)
 - Router configuration guide
 - Advanced settings and blocklist management
 - API reference for integrations
 - Architectural decisions (ADRs)
+
+See also:
+- [Release notes](RELEASE_NOTES.md) — what's in each version, known limitations, upgrade guide
+- [Security policy](SECURITY.md) — vulnerability reporting and known security issues
 
 ## Contributing
 
