@@ -2,8 +2,9 @@
 # pre-release-check.sh — lokal preflight innan v0.1.0 GA-tagging.
 #
 # Kör allt CI gör + extra GA-specifika kontroller. Misslyckas tidigt om något
-# är fel, så vi inte upptäcker problem först när release-image.yml triggas
-# av en pushad tag.
+# är fel, så vi inte upptäcker problem först när image-build körs manuellt
+# enligt docs/RELEASE-RUNBOOK.md (release-image.yml är avaktiverad för
+# v0.1.0 — re-aktivering planerad till v0.1.1).
 #
 # Det här scriptet är trafikljuset för CTO/PM innan US-27 (taggning).
 # Detaljerad GA-checklista: docs/GA-GATE-CHECKLIST.md
