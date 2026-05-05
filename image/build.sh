@@ -274,7 +274,14 @@ log "Checksumma: $(cat "${CHECKSUM_FILE}")"
 
 MANIFEST_FILE="${OUT_DIR}/MANIFEST"
 PIGEN_COMMIT="$(cd "${PIGEN_DIR}" && git rev-parse HEAD 2>/dev/null || echo "unknown")"
-BASE_IMAGE_SHA="$(cat "${CHECKSUM_FILE}" | awk '{print $1}')"
+REPO_COMMIT="$(cd "${REPO_ROOT}" && git rev-parse HEAD 2>/dev/null || echo "unknown")"
+BASE_IMAGE_SHA="$(awk '{print $1}' "${CHECKSUM_FILE}")"
+
+# Individual binary checksums for supply chain verification (US-25 / M-04).
+# Computed from the binaries as they were baked into the image stage — before
+# they are removed by the cleanup_binaries trap.
+PIHOLSTERD_SHA="$(sha256sum "${FILES_DIR}/piholsterd" | awk '{print $1}')"
+PIHOLSTER_ARPD_SHA="$(sha256sum "${FILES_DIR}/piholster-arpd" | awk '{print $1}')"
 
 cat > "${MANIFEST_FILE}" <<EOF
 # PiHolster Image MANIFEST
@@ -283,7 +290,10 @@ cat > "${MANIFEST_FILE}" <<EOF
 build_timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 image_name=${IMAGE_NAME}
 piholster_version=${VERSION}
+repo_commit=${REPO_COMMIT}
 pigen_commit=${PIGEN_COMMIT}
+piholsterd_sha256=${PIHOLSTERD_SHA}
+piholster_arpd_sha256=${PIHOLSTER_ARPD_SHA}
 image_sha256=${BASE_IMAGE_SHA}
 image_file=$(basename "${COMPRESSED}")
 EOF
