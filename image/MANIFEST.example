@@ -1,0 +1,28 @@
+# PiHolster Image MANIFEST
+# Autogenererat av image/build.sh — ändra inte manuellt
+#
+# Detta är en EXEMPELFIL för IT-säk-granskning (US-25). Den visar exakt
+# format som image/build.sh producerar. Värden är illustrativa — riktig
+# MANIFEST genereras från en pi-gen-körning på Linux.
+#
+# Spec för varje fält:
+#
+#   build_timestamp        ISO-8601 UTC, sätts vid byggstart
+#   image_name             piholster-<VERSION>-<YYYY-MM-DD>
+#   piholster_version      från package.json "version"-fältet
+#   repo_commit            git rev-parse HEAD i piholster-repot
+#   pigen_commit           git rev-parse HEAD i image/pi-gen submodulen
+#   piholsterd_sha256      sha256 av piholsterd-binären före kopiering till stage
+#   piholster_arpd_sha256  sha256 av piholster-arpd-binären före kopiering till stage
+#   image_sha256           sha256 av den färdiga .img.xz-filen
+#   image_file             filnamn på .img.xz (inte full sökväg)
+
+build_timestamp=2026-05-15T14:23:07Z
+image_name=piholster-0.1.0-2026-05-15
+piholster_version=0.1.0
+repo_commit=e6f754f9c4d5b6a7e8f9d0c1b2a3e4f5d6c7b8a9
+pigen_commit=4dafe3b3b1de65ddd5d3b3e7a2c1f0a9b8c7d6e5
+piholsterd_sha256=a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
+piholster_arpd_sha256=fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+image_sha256=1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+image_file=piholster-0.1.0-2026-05-15.img.xz
