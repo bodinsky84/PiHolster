@@ -108,31 +108,27 @@ Alla krav i GA-gate är uppfyllda. OK att tagga v0.1.0.
 
 ## När båda kommentarer finns — gå till US-27
 
-Steg-för-steg:
+US-27 körs **manuellt** enligt `docs/RELEASE-RUNBOOK.md`. Image-CI-pipelinen
+(`release-image.yml`) är avaktiverad för v0.1.0 (planerad för v0.1.1).
 
-```bash
-# 1. Verifiera att master är på den commit som ska taggas
-git checkout master
-git pull --ff-only
-git log -1 --oneline
+Sammanfattning av flödet (full version i RELEASE-RUNBOOK.md):
 
-# 2. Skapa annoterad signerad tag (signering om GPG-nyckel finns)
-git tag -s v0.1.0 -m "v0.1.0 GA"
-# Eller utan signering om ingen GPG-nyckel:
-# git tag -a v0.1.0 -m "v0.1.0 GA"
+1. Verifiera master är på rätt commit, kör `bash scripts/pre-release-check.sh`
+   (förväntat: 42/42 PASS).
+2. Skapa annoterad (signerad) tag och pusha — detta triggar **endast**
+   `release-binary.yml` som producerar 6 cross-compilerade binärer i en
+   draft GitHub Release.
+3. Bygg SD-card-imagen lokalt på en Debian/Pi OS-host med
+   `sudo PIHOLSTER_BINARY=... PIHOLSTER_ARPD_BINARY=... bash image/build.sh`.
+4. Signera imagen med `minisign -Sm` mot CTO:s privata nyckel.
+5. Verifiera SHA256 i MANIFEST mot `.sha256`-filen.
+6. Ladda upp `.img.xz`, `.sha256`, `.minisig` och MANIFEST till samma release.
+7. Editar release-bodyn med v0.1.0-avsnittet ur `RELEASE_NOTES.md`.
+8. Publicera releasen (avmarkera "draft").
+9. Uppdatera `README.md` med "Latest release: v0.1.0" och länk.
+10. Stäng GA-gate-PR:en med kommentar `v0.1.0 taggad <SHA>`.
 
-# 3. Pusha taggen — detta triggar release-image.yml automatiskt
-git push origin v0.1.0
-```
-
-GitHub Actions bygger imagen från den taggade commiten, kör smoke-sviten i CI
-och laddar upp `.img.xz`, `.img.xz.sha256` och `.img.xz.minisig` till en draft
-GitHub Release.
-
-PM:
-1. Editar release-bodyn med v0.1.0-avsnittet ur `RELEASE_NOTES.md`.
-2. Publicerar releasen (avmarkerar "draft").
-3. Uppdaterar `README.md` med "Latest release: v0.1.0" och länk.
-4. Stänger GA-gate-PR:en med kommentar `v0.1.0 taggad <SHA>`.
+Reservera 2 timmar i kalendern (pi-gen är långsamt). Vid problem under
+steg 3–8: rollback-procedur finns i RELEASE-RUNBOOK.md.
 
 Sprint 4 klar.
