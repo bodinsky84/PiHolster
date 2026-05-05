@@ -9,9 +9,40 @@ permissions:
   contents: write
 
 jobs:
+  frontend:
+    name: Build web UI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm build
+        run: pnpm --filter web build
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/piholsterd/internal/api/dist/
+          retention-days: 1
+
   build:
     name: Cross-compile & upload
     runs-on: ubuntu-latest
+    needs: frontend
     strategy:
       matrix:
         include:
@@ -37,7 +68,13 @@ jobs:
           go-version: "1.22"
           cache: true
 
-      - name: Build ${{ matrix.suffix }}
+      - name: Download web dist
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: apps/piholsterd/internal/api/dist/
+
+      - name: Build piholsterd ${{ matrix.suffix }}
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -51,8 +88,24 @@ jobs:
             -o "piholsterd-${{ matrix.suffix }}" \
             ./apps/piholsterd/cmd/piholsterd
 
+      - name: Build piholster-arpd ${{ matrix.suffix }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION="${{ github.ref_name }}"
+          go build \
+            -trimpath \
+            -ldflags="-s -w -X main.version=${VERSION}" \
+            -o "piholster-arpd-${{ matrix.suffix }}" \
+            ./apps/piholster-arpd/cmd/piholster-arpd
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: piholsterd-${{ matrix.suffix }}
+          files: |
+            piholsterd-${{ matrix.suffix }}
+            piholster-arpd-${{ matrix.suffix }}

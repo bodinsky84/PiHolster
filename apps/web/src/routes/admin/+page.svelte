@@ -199,6 +199,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{view === 'dashboard' ? 'Enhetshantering' : 'Admin'} — PiHolster</title>
+</svelte:head>
+
 <main>
 	<a href="/" class="back">&larr; Tillbaka</a>
 

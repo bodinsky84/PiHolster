@@ -45,6 +45,10 @@
 			: 'Problem hittades';
 </script>
 
+<svelte:head>
+	<title>PiHolster</title>
+</svelte:head>
+
 <main>
 	{#if loading}
 		<div class="circle loading-circle" aria-busy="true" aria-label="Laddar nätverksstatus">

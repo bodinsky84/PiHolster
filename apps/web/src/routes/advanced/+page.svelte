@@ -64,6 +64,10 @@
 	$: barWidth = blockedPct + '%';
 </script>
 
+<svelte:head>
+	<title>Avancerat — PiHolster</title>
+</svelte:head>
+
 <main>
 	<a href="/" class="back">&larr; Tillbaka till startsidan</a>
 	<h1>Avancerat läge</h1>
