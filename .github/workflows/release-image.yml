@@ -1,5 +1,22 @@
 name: Release — SD-card Image
 
+# DISABLED for v0.1.0 GA.
+#
+# The image build is performed manually for v0.1.0 according to
+# docs/RELEASE-RUNBOOK.md. Reason:
+#
+#   1. image/build.sh requires PIHOLSTER_BINARY and PIHOLSTER_ARPD_BINARY env
+#      vars pointing at real binaries. They are uploaded as release assets by
+#      release-binary.yml — not as artifacts — so this job has no automatic
+#      access to them in a fresh runner.
+#   2. The runner type [self-hosted, ARM64] is not registered for this repo.
+#   3. Minisign signing requires MINISIGN_SECRET_KEY as a GitHub Secret, which
+#      is not yet provisioned.
+#   4. The smoke suite (US-26) is run manually against 3 physical Pi 3 devices.
+#      It cannot run inside a CI runner without dedicated network hardware.
+#
+# Re-enabling is tracked for v0.1.1. See docs/ROADMAP.md.
+
 on:
   workflow_run:
     workflows: ["Release — Binary"]
@@ -12,7 +29,7 @@ permissions:
 jobs:
   image:
     name: Build & upload .img.xz
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: false  # disabled for v0.1.0 — see header comment and docs/RELEASE-RUNBOOK.md
     runs-on: [self-hosted, ARM64]
 
     steps:
