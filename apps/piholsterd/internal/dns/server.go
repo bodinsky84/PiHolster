@@ -5,17 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	mdns "github.com/miekg/dns"
+	"github.com/piholster/piholster/apps/piholsterd/internal/store"
 )
 
 // Server is a DNS server that blocks listed domains and forwards the rest via DoH.
 type Server struct {
 	blocklist *Blocklist
 	upstream  *DoHUpstream
+	store     *store.Store
 	udpServer *mdns.Server
 	tcpServer *mdns.Server
 	port      string
@@ -25,7 +28,7 @@ type Server struct {
 
 // NewServer constructs a Server. It reads DNS_PORT from the environment,
 // defaulting to 5300 for unprivileged dev use.
-func NewServer(bl *Blocklist, upstream *DoHUpstream) *Server {
+func NewServer(bl *Blocklist, upstream *DoHUpstream, st *store.Store) *Server {
 	port := os.Getenv("DNS_PORT")
 	if port == "" {
 		port = "5300"
@@ -33,6 +36,7 @@ func NewServer(bl *Blocklist, upstream *DoHUpstream) *Server {
 	s := &Server{
 		blocklist: bl,
 		upstream:  upstream,
+		store:     st,
 		port:      port,
 	}
 
@@ -110,8 +114,16 @@ func (s *Server) handle(w mdns.ResponseWriter, r *mdns.Msg) {
 		return
 	}
 
+	start := time.Now()
 	q := r.Question[0]
 	domain := strings.ToLower(strings.TrimSuffix(q.Name, "."))
+
+	clientIP := ""
+	if addr := w.RemoteAddr(); addr != nil {
+		if host, _, err := net.SplitHostPort(addr.String()); err == nil {
+			clientIP = host
+		}
+	}
 
 	if s.blocklist.IsBlocked(domain) {
 		slog.Debug("blocked", "domain", domain)
@@ -121,6 +133,7 @@ func (s *Server) handle(w mdns.ResponseWriter, r *mdns.Msg) {
 		if err := w.WriteMsg(m); err != nil {
 			slog.Error("write NXDOMAIN response", "err", err)
 		}
+		s.logQuery(domain, clientIP, true, "", time.Since(start))
 		return
 	}
 
@@ -133,5 +146,12 @@ func (s *Server) handle(w mdns.ResponseWriter, r *mdns.Msg) {
 
 	if err := w.WriteMsg(reply); err != nil {
 		slog.Error("write upstream response", "domain", domain, "err", err)
+	}
+	s.logQuery(domain, clientIP, false, "doh", time.Since(start))
+}
+
+func (s *Server) logQuery(domain, clientIP string, blocked bool, upstream string, latency time.Duration) {
+	if err := s.store.LogQuery(domain, clientIP, blocked, upstream, int(latency.Milliseconds())); err != nil {
+		slog.Debug("dns: log query failed", "err", err)
 	}
 }

@@ -47,11 +47,13 @@ func NewClient(sockPath string) *Client {
 	}
 }
 
-// Connect starts the background read loop. It returns immediately; device
-// events are delivered on the channel returned by Devices(). Connect blocks
-// until the first successful dial or ctx is cancelled.
+// Connect starts the background read loop. It attempts a single dial with a
+// 2-second timeout and returns an error immediately if the socket is
+// unavailable. Reconnection after a dropped connection is handled by readLoop.
 func (c *Client) Connect(ctx context.Context) error {
-	conn, err := c.dialWithBackoff(ctx)
+	dialCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	conn, err := (&net.Dialer{}).DialContext(dialCtx, "unix", c.sockPath)
 	if err != nil {
 		return err
 	}
