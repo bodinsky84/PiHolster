@@ -191,6 +191,20 @@ tail -n 1 soak-rc1.csv
 
 Om trenden är konsekvent uppåt med > 5 MB/dygn: minnesläcka — soaken NOK.
 
+#### Automatiserad analys
+
+`scripts/soak-analyze.sh` läser CSV:n, kör linjär regression mot
+piholsterd-RSS, kontrollerar PID-byten och ger ett samlat PASS/NOK.
+Använd det som beslutsstöd istället för head/tail-checken ovan:
+
+```bash
+bash scripts/soak-analyze.sh ./soak-rc1.csv
+# eller maskinläsbart:
+bash scripts/soak-analyze.sh ./soak-rc1.csv --json
+```
+
+Exit-kod 0 = PASS, 1 = NOK, 2 = inputfel (CSV saknas/format fel).
+
 ### 3. Skriv soak-rapport
 
 3–5 meningar, OK/NOK per AC, klistras direkt som kommentar i GA-gate-PR:en.
