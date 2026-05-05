@@ -37,6 +37,25 @@ Allt ska gå att installera från en anpassad Raspberry Pi OS-image.
 
 ---
 
+## v0.1.1 — Patch-release efter GA
+
+Mål: Adressera de kända begränsningar som dokumenterades i v0.1.0 GA-noterna,
+samt återaktivera image-build-pipelinen i CI.
+
+- M-05 fix: `/etc/piholster/initial-password` skrivs med 0400 (inte 0640)
+- L-03 fix: `LockPersonality=true` läggs till i `firstboot.service`
+- Cert-renewal-flöde: web-UI eller `piholsterctl regen-cert`-CLI för att
+  rotera self-signed-certet innan 10-årsgränsen (eller vid komprometterad nyckel)
+- Backup/restore via web-UI (idag endast manuellt via `docs/BACKUP.md`)
+- Image-CI-pipeline: re-aktivera `release-image.yml` med:
+  - Self-hosted ARM64-runner registrerad mot repot
+  - `MINISIGN_SECRET_KEY`-secret provisionerat i GitHub Secrets
+  - Hämta binärerna från `release-binary.yml`-jobbet via `actions/download-artifact`
+  - Smoke-svit som kan köras headless i runner (mock-Pi eller emulerad nätverksstack)
+- One-click update i web-UI (kräver signerade update-paket — använder samma minisign-nyckel)
+
+---
+
 ## v1.0 — Polerat och stabil release
 
 Mål: Redo för bredare publik. Fokus på stabilitet, dokumentation och UX.
@@ -70,7 +89,8 @@ Mål: PiHolster som plattform, inte bara ett verktyg.
 
 | Version | Status      | Beräknad release  |
 |---------|-------------|-------------------|
-| v0.1    | Pågår       | Sprint 4 (ca 8v)  |
+| v0.1.0  | Pågår (GA-gate) | Sprint 4      |
+| v0.1.1  | Planerad    | ca 4–6 veckor efter v0.1.0 |
 | v1.0    | Planerad    | ca 6 månader      |
 | v2.0    | Vision      | ca 12–18 månader  |
 

@@ -1,0 +1,25 @@
+# PLACEHOLDER — den verkliga publika nyckeln genereras inför v0.1.0 GA.
+#
+# Hur CTO genererar nyckelparet (en gång):
+#
+#   minisign -G -p docs/minisign.pub -s ~/.minisign/minisign.key
+#
+# - docs/minisign.pub committas i denna repo (publik del — ofarlig att dela).
+# - ~/.minisign/minisign.key BEHÅLLS PRIVAT, krypterad med ett starkt lösenord,
+#   och förvaras endast på CTO:s primära maskin + offline-backup. Dela aldrig.
+#
+# Lösenordet förvaras i en lösenordshanterare. Förlust av nyckel eller lösenord
+# innebär att framtida releaser måste rotera signeringsnyckel, vilket är en
+# brytande förändring för alla användare som verifierat tidigare images.
+#
+# När den riktiga nyckeln finns: ersätt detta dokument med endast två rader:
+#
+#   untrusted comment: minisign public key XXXXXXXXXXXXXXXX
+#   <BASE64-ENCODED-PUBLIC-KEY>
+#
+# Användare verifierar SD-card-imagen så här:
+#
+#   minisign -Vm piholster-0.1.0-YYYY-MM-DD.img.xz \
+#     -P "$(tail -1 docs/minisign.pub)"
+#
+# Förväntat: "Signature and comment signature verified".

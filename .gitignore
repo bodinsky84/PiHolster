@@ -71,10 +71,11 @@ desktop.ini
 # Release artefacts
 release/
 
-# Secrets
+# Secrets — private keys only.
+# minisign.pub is the PUBLIC half and is distributed via docs/minisign.pub
+# so users can verify image signatures. Do NOT add it here.
 *.pem
 *.key
-minisign.pub
 minisign.sec
 
 # Local Docker overrides

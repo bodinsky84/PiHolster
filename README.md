@@ -19,7 +19,24 @@ See [docs/INSTALL-PI.md](docs/INSTALL-PI.md) for the full step-by-step guide.
 
 **Alternative — pre-built SD image:**
 
-Download the latest `.img.xz` from the [Releases](https://github.com/piholster/piholster/releases) page and burn it to a microSD card.
+Download the latest `.img.xz` from the [Releases](https://github.com/bodinsky84/PiHolster/releases) page and burn it to a microSD card.
+
+### Verifying releases
+
+Every official `.img.xz` is signed with `minisign`. Before flashing, verify the
+download against the public key shipped in this repo:
+
+```bash
+# 1. Verify the SHA-256 checksum:
+sha256sum -c piholster-0.1.0-YYYY-MM-DD.img.xz.sha256
+
+# 2. Verify the minisign signature against the public key in docs/minisign.pub:
+minisign -Vm piholster-0.1.0-YYYY-MM-DD.img.xz \
+  -P "$(tail -1 docs/minisign.pub)"
+```
+
+Expected: `Signature and comment signature verified`. If verification fails,
+**do not flash the image** — re-download or open an issue.
 
 ## Requirements
 
