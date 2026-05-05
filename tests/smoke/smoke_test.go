@@ -104,6 +104,41 @@ func TestFirewallPreFirstboot(t *testing.T) {
 	t.Logf("port 80 is open and accepting connections")
 }
 
+// TestHTTPSRedirect verifies that port 80 redirects to https:// (US-24).
+// The test uses a client that does NOT follow redirects so we can inspect the
+// Location header directly.
+func TestHTTPSRedirect(t *testing.T) {
+	noRedirectClient := &http.Client{
+		Timeout: smokeTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // self-signed cert on Pi
+		},
+	}
+
+	url := fmt.Sprintf("http://%s/", piIP)
+	resp, err := noRedirectClient.Get(url)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMovedPermanently {
+		t.Fatalf("expected 301 Moved Permanently, got %d", resp.StatusCode)
+	}
+
+	loc := resp.Header.Get("Location")
+	if loc == "" {
+		t.Fatal("Location header missing in redirect response")
+	}
+	if !strings.HasPrefix(loc, "https://") {
+		t.Fatalf("Location %q does not start with https://", loc)
+	}
+	t.Logf("HTTP→HTTPS redirect: %s → %s", url, loc)
+}
+
 // TestDNSLatency sends 20 DNS queries to PI_IP:53 (mix of blocked and
 // legitimate domains) and fails if the median round-trip exceeds 20 ms.
 func TestDNSLatency(t *testing.T) {
