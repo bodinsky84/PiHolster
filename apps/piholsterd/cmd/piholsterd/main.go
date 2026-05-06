@@ -14,6 +14,7 @@ import (
 	"github.com/piholster/piholster/apps/piholsterd/internal/arp"
 	"github.com/piholster/piholster/apps/piholsterd/internal/auth"
 	internaldns "github.com/piholster/piholster/apps/piholsterd/internal/dns"
+	"github.com/piholster/piholster/apps/piholsterd/internal/queryevents"
 	"github.com/piholster/piholster/apps/piholsterd/internal/store"
 )
 
@@ -76,14 +77,16 @@ func main() {
 	}
 
 	upstream := internaldns.NewDoHUpstream()
-	srv := internaldns.NewServer(bl, upstream, db)
+
+	bus := queryevents.NewBus(200)
+	srv := internaldns.NewServer(bl, upstream, db, bus)
 
 	if err := srv.Start(); err != nil {
 		slog.Error("DNS server failed to start", "err", err)
 		os.Exit(1)
 	}
 
-	router := api.NewRouter(appCtx, db)
+	router := api.NewRouter(appCtx, db, bus)
 
 	// TLS configuration — read cert/key paths from environment.
 	// On Pi: set by piholsterd.service (TLS_CERT, TLS_KEY, HTTPS_PORT, HTTP_PORT).
