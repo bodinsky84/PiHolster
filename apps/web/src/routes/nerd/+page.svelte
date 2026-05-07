@@ -97,7 +97,7 @@
 
 	function onKeydown(e) {
 		// Don't hijack typing in the filter box.
-		if (e.target instanceof HTMLInputElement) {
+		if (e.target?.tagName === 'INPUT') {
 			if (e.key === 'Escape') e.target.blur();
 			return;
 		}
@@ -259,12 +259,12 @@
 {#if showHelp}
 	<div
 		class="modal-backdrop"
-		on:click={() => (showHelp = false)}
+		on:click={(e) => { if (e.target === e.currentTarget) showHelp = false; }}
 		on:keydown={(e) => e.key === 'Escape' && (showHelp = false)}
 		role="button"
 		tabindex="-1"
 	>
-		<div class="modal" on:click|stopPropagation role="dialog" aria-modal="true">
+		<div class="modal" role="dialog" aria-modal="true">
 			<h3>Tangentbord</h3>
 			<dl class="shortcuts">
 				<dt>p</dt><dd>Pausa / återuppta live-flödet</dd>

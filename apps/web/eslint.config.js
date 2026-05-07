@@ -21,6 +21,8 @@ export default [
                 URLSearchParams: "readonly",
                 localStorage: "readonly",
                 sessionStorage: "readonly",
+                ResizeObserver: "readonly",
+                EventSource: "readonly",
             },
         },
         rules: {
