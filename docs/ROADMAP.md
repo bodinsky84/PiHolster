@@ -53,6 +53,10 @@ samt återaktivera image-build-pipelinen i CI.
   - Hämta binärerna från `release-binary.yml`-jobbet via `actions/download-artifact`
   - Smoke-svit som kan köras headless i runner (mock-Pi eller emulerad nätverksstack)
 - One-click update i web-UI (kräver signerade update-paket — använder samma minisign-nyckel)
+- **Nördläge-dashboard** (`/nerd`-route): live SSE-flöde, regex-filter, latency-percentiler
+  (p50/p95/p99/max), top-N blockerade domäner och klienter, Go-runtime-kort
+  (uptime, goroutines, heap, GC). `/advanced` får 1h-sparkline och median-latency.
+  Implementation klar på `feat/dashboard-nerd-mode`.
 
 ---
 
