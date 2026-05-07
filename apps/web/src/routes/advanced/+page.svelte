@@ -1,28 +1,63 @@
 <script>
 	import { onMount } from 'svelte';
+	import Sparkline from '$lib/Sparkline.svelte';
+	import TopList from '$lib/TopList.svelte';
+	import {
+		fetchTimeseries,
+		fetchTop,
+		fetchClients,
+		fetchLatency
+	} from '$lib/api.js';
 
 	let status = null;
 	let devices = [];
+	let buckets = [];
+	let topBlocked = [];
+	let topAllowed = [];
+	let topClients = [];
+	let latency = null;
 	let loading = true;
 	let fetchError = false;
 
-	// Tracks which trust-POSTs are in flight per MAC to prevent double-clicks.
 	let trusting = {};
+
+	async function loadAll() {
+		const [statusRes, devicesRes, ts, blocked, allowed, clients, lat] = await Promise.all([
+			fetch('/api/status').then((r) => r.json()),
+			fetch('/api/devices').then((r) => r.json()),
+			fetchTimeseries('1h', '60s'),
+			fetchTop('blocked', 10, '24h'),
+			fetchTop('allowed', 10, '24h'),
+			fetchClients(10, '24h'),
+			fetchLatency('24h')
+		]);
+		status = statusRes;
+		devices = devicesRes;
+		buckets = ts.buckets;
+		topBlocked = blocked.rows;
+		topAllowed = allowed.rows;
+		topClients = clients.rows;
+		latency = lat.percentiles;
+	}
 
 	onMount(async () => {
 		try {
-			const [statusRes, devicesRes] = await Promise.all([
-				fetch('/api/status'),
-				fetch('/api/devices')
-			]);
-			if (!statusRes.ok || !devicesRes.ok) throw new Error('http error');
-			status = await statusRes.json();
-			devices = await devicesRes.json();
+			await loadAll();
 		} catch {
 			fetchError = true;
 		} finally {
 			loading = false;
 		}
+
+		// Refresh stats every 30s without a full reload.
+		const refresh = setInterval(async () => {
+			try {
+				await loadAll();
+			} catch {
+				// transient errors are ignored on refresh
+			}
+		}, 30000);
+		return () => clearInterval(refresh);
 	});
 
 	async function trustDevice(mac) {
@@ -34,9 +69,7 @@
 				body: JSON.stringify({ trusted: true })
 			});
 			if (res.ok || res.status === 204) {
-				devices = devices.map((d) =>
-					d.mac === mac ? { ...d, trusted: true } : d
-				);
+				devices = devices.map((d) => (d.mac === mac ? { ...d, trusted: true } : d));
 			}
 		} finally {
 			trusting = { ...trusting, [mac]: false };
@@ -60,7 +93,6 @@
 		status && status.total_today > 0
 			? Math.round((status.blocked_today / status.total_today) * 100)
 			: 0;
-
 	$: barWidth = blockedPct + '%';
 </script>
 
@@ -70,7 +102,10 @@
 
 <main>
 	<a href="/" class="back">&larr; Tillbaka till startsidan</a>
-	<h1>Avancerat läge</h1>
+	<header class="page-head">
+		<h1>Avancerat läge</h1>
+		<a href="/nerd" class="nerd-link" title="Live SSE feed, percentiler och Go-runtime">Nördläge →</a>
+	</header>
 
 	{#if loading}
 		<p class="muted">Laddar data...</p>
@@ -79,19 +114,38 @@
 	{:else}
 		<section class="card">
 			<h2>Statistik (senaste 24 h)</h2>
-			<div class="stat-row">
-				<span class="stat-num">{status.blocked_today.toLocaleString('sv-SE')}</span>
-				<span class="stat-label">blockerade förfrågningar</span>
-			</div>
-			<div class="stat-row">
-				<span class="stat-num">{status.total_today.toLocaleString('sv-SE')}</span>
-				<span class="stat-label">totalt</span>
+			<div class="stat-grid">
+				<div>
+					<span class="stat-num">{status.blocked_today.toLocaleString('sv-SE')}</span>
+					<span class="stat-label">blockerade</span>
+				</div>
+				<div>
+					<span class="stat-num">{status.total_today.toLocaleString('sv-SE')}</span>
+					<span class="stat-label">totalt</span>
+				</div>
+				{#if latency && latency.sample > 0}
+					<div>
+						<span class="stat-num">{latency.p50}<span class="unit">ms</span></span>
+						<span class="stat-label">median latency (p50)</span>
+					</div>
+				{/if}
 			</div>
 			<div class="bar-wrap" role="img" aria-label="{blockedPct}% blockerat">
 				<div class="bar-fill" style="width:{barWidth}"></div>
 			</div>
 			<p class="bar-label">{blockedPct}% av alla förfrågningar blockerades</p>
 		</section>
+
+		<section class="card">
+			<h2>Senaste timmen</h2>
+			<Sparkline {buckets} height={140} detailed={true} />
+		</section>
+
+		<div class="grid">
+			<TopList rows={topBlocked} title="Topp blockerade domäner (24h)" monoLabel />
+			<TopList rows={topAllowed} title="Topp tillåtna domäner (24h)" monoLabel />
+			<TopList rows={topClients} title="Mest aktiva klienter (24h)" valueLabel="Per IP-adress" monoLabel />
+		</div>
 
 		<section class="card">
 			<h2>Enheter ({devices.length})</h2>
@@ -134,18 +188,16 @@
 		background: #0f0f1a;
 		color: #e0e0e0;
 		min-height: 100vh;
-		display: flex;
-		justify-content: center;
-		align-items: flex-start;
 	}
 
 	main {
-		max-width: 700px;
+		max-width: 900px;
 		width: 100%;
+		margin: 0 auto;
 		padding: 2.5rem 1.5rem;
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
+		gap: 1.5rem;
 	}
 
 	.back {
@@ -159,17 +211,39 @@
 		text-decoration: underline;
 	}
 
+	.page-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
 	h1 {
 		font-size: 2rem;
+		margin: 0;
+	}
+
+	.nerd-link {
+		color: #b08af7;
+		font-size: 0.9rem;
+		text-decoration: none;
+		border: 1px solid #4a3a7a;
+		border-radius: 0.4rem;
+		padding: 0.4rem 0.75rem;
+		transition: background 0.15s;
+	}
+
+	.nerd-link:hover {
+		background: #2a1a4a;
 	}
 
 	h2 {
-		font-size: 1.2rem;
-		margin-bottom: 1rem;
-		color: #aaa;
+		font-size: 0.85rem;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		font-size: 0.85rem;
+		color: #aaa;
+		margin: 0 0 1rem;
 	}
 
 	.card {
@@ -178,22 +252,36 @@
 		padding: 1.5rem;
 	}
 
-	.stat-row {
+	.stat-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.stat-grid > div {
 		display: flex;
-		align-items: baseline;
-		gap: 0.5rem;
-		margin-bottom: 0.4rem;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 
 	.stat-num {
 		font-size: 1.8rem;
 		font-weight: bold;
 		color: #7eb8f7;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.unit {
+		font-size: 0.95rem;
+		color: #aaa;
+		font-weight: normal;
+		margin-left: 0.15rem;
 	}
 
 	.stat-label {
 		color: #aaa;
-		font-size: 0.95rem;
+		font-size: 0.85rem;
 	}
 
 	.bar-wrap {
@@ -216,11 +304,19 @@
 		color: #aaa;
 	}
 
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		gap: 1rem;
+	}
+
 	.device-list {
 		list-style: none;
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
+		padding: 0;
+		margin: 0;
 	}
 
 	.device-item {
@@ -308,7 +404,7 @@
 	}
 
 	.muted {
-		color: #666;
+		color: #888;
 	}
 
 	.error-msg {
@@ -318,7 +414,7 @@
 		border-radius: 0.5rem;
 	}
 
-	@media (max-width: 375px) {
+	@media (max-width: 480px) {
 		main {
 			padding: 1.5rem 1rem;
 		}

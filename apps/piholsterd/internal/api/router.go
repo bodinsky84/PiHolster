@@ -6,6 +6,7 @@ import (
 
 	"github.com/piholster/piholster/apps/piholsterd/internal/api/middleware"
 	"github.com/piholster/piholster/apps/piholsterd/internal/auth"
+	"github.com/piholster/piholster/apps/piholsterd/internal/queryevents"
 	"github.com/piholster/piholster/apps/piholsterd/internal/store"
 )
 
@@ -18,7 +19,7 @@ import (
 //
 // Per-route auth is applied via requireAdmin inside registerRoutes.
 // Requires Go 1.22+ for path-parameter syntax in HandleFunc patterns.
-func NewRouter(ctx context.Context, st *store.Store) http.Handler {
+func NewRouter(ctx context.Context, st *store.Store, bus *queryevents.Bus) http.Handler {
 	mux := http.NewServeMux()
 
 	limiter := auth.NewRateLimiter(ctx)
@@ -27,6 +28,7 @@ func NewRouter(ctx context.Context, st *store.Store) http.Handler {
 	statusHandler := NewStatusHandler(st)
 	devicesHandler := NewDevicesHandler(st)
 	authHandler := NewAuthHandler(st, limiter)
+	statsHandler := NewStatsHandler(st, bus)
 
 	requireAdmin := auth.RequireAdmin(st)
 
@@ -44,6 +46,25 @@ func NewRouter(ctx context.Context, st *store.Store) http.Handler {
 	)
 	mux.Handle("POST /api/devices/{mac}/rename",
 		requireAdmin(http.HandlerFunc(devicesHandler.Rename)),
+	)
+
+	mux.Handle("GET /api/stats/timeseries",
+		requireAdmin(http.HandlerFunc(statsHandler.TimeSeries)),
+	)
+	mux.Handle("GET /api/stats/top",
+		requireAdmin(http.HandlerFunc(statsHandler.Top)),
+	)
+	mux.Handle("GET /api/stats/clients",
+		requireAdmin(http.HandlerFunc(statsHandler.Clients)),
+	)
+	mux.Handle("GET /api/stats/latency",
+		requireAdmin(http.HandlerFunc(statsHandler.Latency)),
+	)
+	mux.Handle("GET /api/stats/system",
+		requireAdmin(http.HandlerFunc(statsHandler.System)),
+	)
+	mux.Handle("GET /api/stats/live",
+		requireAdmin(http.HandlerFunc(statsHandler.Live)),
 	)
 
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)

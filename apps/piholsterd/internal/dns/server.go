@@ -11,6 +11,7 @@ import (
 	"time"
 
 	mdns "github.com/miekg/dns"
+	"github.com/piholster/piholster/apps/piholsterd/internal/queryevents"
 	"github.com/piholster/piholster/apps/piholsterd/internal/store"
 )
 
@@ -19,6 +20,7 @@ type Server struct {
 	blocklist *Blocklist
 	upstream  *DoHUpstream
 	store     *store.Store
+	bus       *queryevents.Bus
 	udpServer *mdns.Server
 	tcpServer *mdns.Server
 	port      string
@@ -27,8 +29,9 @@ type Server struct {
 }
 
 // NewServer constructs a Server. It reads DNS_PORT from the environment,
-// defaulting to 5300 for unprivileged dev use.
-func NewServer(bl *Blocklist, upstream *DoHUpstream, st *store.Store) *Server {
+// defaulting to 5300 for unprivileged dev use. bus may be nil; when set, every
+// resolved query is also published for SSE live streaming.
+func NewServer(bl *Blocklist, upstream *DoHUpstream, st *store.Store, bus *queryevents.Bus) *Server {
 	port := os.Getenv("DNS_PORT")
 	if port == "" {
 		port = "5300"
@@ -37,6 +40,7 @@ func NewServer(bl *Blocklist, upstream *DoHUpstream, st *store.Store) *Server {
 		blocklist: bl,
 		upstream:  upstream,
 		store:     st,
+		bus:       bus,
 		port:      port,
 	}
 
@@ -151,7 +155,18 @@ func (s *Server) handle(w mdns.ResponseWriter, r *mdns.Msg) {
 }
 
 func (s *Server) logQuery(domain, clientIP string, blocked bool, upstream string, latency time.Duration) {
-	if err := s.store.LogQuery(domain, clientIP, blocked, upstream, int(latency.Milliseconds())); err != nil {
+	latencyMs := int(latency.Milliseconds())
+	if err := s.store.LogQuery(domain, clientIP, blocked, upstream, latencyMs); err != nil {
 		slog.Debug("dns: log query failed", "err", err)
+	}
+	if s.bus != nil {
+		s.bus.Publish(queryevents.Event{
+			Timestamp: time.Now(),
+			Domain:    domain,
+			ClientIP:  clientIP,
+			Blocked:   blocked,
+			Upstream:  upstream,
+			LatencyMs: latencyMs,
+		})
 	}
 }
