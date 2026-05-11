@@ -13,6 +13,7 @@ import (
 	"github.com/piholster/piholster/apps/piholsterd/internal/api"
 	"github.com/piholster/piholster/apps/piholsterd/internal/arp"
 	"github.com/piholster/piholster/apps/piholsterd/internal/auth"
+	"github.com/piholster/piholster/apps/piholsterd/internal/wealth"
 	internaldns "github.com/piholster/piholster/apps/piholsterd/internal/dns"
 	"github.com/piholster/piholster/apps/piholsterd/internal/store"
 )
@@ -63,6 +64,12 @@ func main() {
 	notifier := alerts.NewNotifier(tgClient, db)
 	go notifier.Run(appCtx, arpClient.Devices())
 
+	wealthEngine := wealth.NewEngine()
+	go wealthEngine.Run(appCtx)
+
+	poller := alerts.NewTelegramPoller(tgClient, db, wealthEngine)
+	go poller.Run(appCtx)
+
 	bl := internaldns.NewBlocklist()
 
 	blocklistPath := os.Getenv("BLOCKLIST_PATH")
@@ -83,7 +90,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := api.NewRouter(appCtx, db)
+	router := api.NewRouter(appCtx, db, wealthEngine)
 
 	// TLS configuration — read cert/key paths from environment.
 	// On Pi: set by piholsterd.service (TLS_CERT, TLS_KEY, HTTPS_PORT, HTTP_PORT).
