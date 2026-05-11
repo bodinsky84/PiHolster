@@ -6,7 +6,9 @@ import (
 
 	"github.com/piholster/piholster/apps/piholsterd/internal/api/middleware"
 	"github.com/piholster/piholster/apps/piholsterd/internal/auth"
+	"github.com/piholster/piholster/apps/piholsterd/internal/income"
 	"github.com/piholster/piholster/apps/piholsterd/internal/store"
+	"github.com/piholster/piholster/apps/piholsterd/internal/wealth"
 )
 
 // NewRouter builds and returns the HTTP handler with the full middleware stack
@@ -18,7 +20,7 @@ import (
 //
 // Per-route auth is applied via requireAdmin inside registerRoutes.
 // Requires Go 1.22+ for path-parameter syntax in HandleFunc patterns.
-func NewRouter(ctx context.Context, st *store.Store) http.Handler {
+func NewRouter(ctx context.Context, st *store.Store, wealthEngine *wealth.Engine) http.Handler {
 	mux := http.NewServeMux()
 
 	limiter := auth.NewRateLimiter(ctx)
@@ -27,6 +29,7 @@ func NewRouter(ctx context.Context, st *store.Store) http.Handler {
 	statusHandler := NewStatusHandler(st)
 	devicesHandler := NewDevicesHandler(st)
 	authHandler := NewAuthHandler(st, limiter)
+	incomeService := income.NewIncomeService(st)
 
 	requireAdmin := auth.RequireAdmin(st)
 
@@ -37,6 +40,21 @@ func NewRouter(ctx context.Context, st *store.Store) http.Handler {
 	)
 	mux.Handle("GET /api/devices",
 		requireAdmin(http.HandlerFunc(devicesHandler.List)),
+	)
+
+	mux.Handle("GET /api/wealth/market",
+		requireAdmin(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(w, http.StatusOK, wealthEngine.GetMarket())
+		})),
+	)
+	mux.Handle("GET /api/wealth/signals",
+		requireAdmin(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			writeJSON(w, http.StatusOK, wealthEngine.GetSignals())
+		})),
+	)
+
+	mux.Handle("GET /api/income",
+		requireAdmin(http.HandlerFunc(incomeService.GetStats)),
 	)
 
 	mux.Handle("POST /api/devices/{mac}/trust",

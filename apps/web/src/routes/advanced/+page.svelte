@@ -69,7 +69,13 @@
 </svelte:head>
 
 <main>
-	<a href="/" class="back">&larr; Tillbaka till startsidan</a>
+	<div class="nav-header">
+		<a href="/" class="back">&larr; Tillbaka till startsidan</a>
+		<div class="links">
+			<a href="/wealth" class="wealth-link">WEALTH_TERMINAL</a>
+			<a href="/nerd" class="nerd-link">Nördläge (AAAAA)</a>
+		</div>
+	</div>
 	<h1>Avancerat läge</h1>
 
 	{#if loading}
@@ -157,6 +163,53 @@
 
 	.back:hover {
 		text-decoration: underline;
+	}
+
+	.nav-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.links {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.wealth-link {
+		color: #ffd700;
+		text-decoration: none;
+		font-family: monospace;
+		font-weight: bold;
+		border: 1px solid #ffd700;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.8rem;
+		transition: all 0.2s;
+	}
+
+	.wealth-link:hover {
+		background: #ffd700;
+		color: #000;
+		box-shadow: 0 0 10px #ffd700;
+	}
+
+	.nerd-link {
+		color: #0f0;
+		text-decoration: none;
+		font-family: monospace;
+		font-weight: bold;
+		border: 1px solid #0f0;
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.8rem;
+		transition: all 0.2s;
+	}
+
+	.nerd-link:hover {
+		background: #0f0;
+		color: #000;
+		box-shadow: 0 0 10px #0f0;
 	}
 
 	h1 {
