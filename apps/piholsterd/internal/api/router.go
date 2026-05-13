@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/piholster/piholster/apps/piholsterd/internal/allsvenskan"
 	"github.com/piholster/piholster/apps/piholsterd/internal/api/middleware"
 	"github.com/piholster/piholster/apps/piholsterd/internal/auth"
 	"github.com/piholster/piholster/apps/piholsterd/internal/store"
@@ -18,7 +19,7 @@ import (
 //
 // Per-route auth is applied via requireAdmin inside registerRoutes.
 // Requires Go 1.22+ for path-parameter syntax in HandleFunc patterns.
-func NewRouter(ctx context.Context, st *store.Store) http.Handler {
+func NewRouter(ctx context.Context, st *store.Store, asEngine *allsvenskan.Engine) http.Handler {
 	mux := http.NewServeMux()
 
 	limiter := auth.NewRateLimiter(ctx)
@@ -27,6 +28,7 @@ func NewRouter(ctx context.Context, st *store.Store) http.Handler {
 	statusHandler := NewStatusHandler(st)
 	devicesHandler := NewDevicesHandler(st)
 	authHandler := NewAuthHandler(st, limiter)
+	allsvenskanHandler := NewAllsvenskanHandler(asEngine)
 
 	requireAdmin := auth.RequireAdmin(st)
 
@@ -37,6 +39,19 @@ func NewRouter(ctx context.Context, st *store.Store) http.Handler {
 	)
 	mux.Handle("GET /api/devices",
 		requireAdmin(http.HandlerFunc(devicesHandler.List)),
+	)
+
+	mux.Handle("GET /api/allsvenskan/table",
+		requireAdmin(http.HandlerFunc(allsvenskanHandler.Table)),
+	)
+	mux.Handle("GET /api/allsvenskan/news",
+		requireAdmin(http.HandlerFunc(allsvenskanHandler.News)),
+	)
+	mux.Handle("GET /api/allsvenskan/matches",
+		requireAdmin(http.HandlerFunc(allsvenskanHandler.Matches)),
+	)
+	mux.Handle("GET /api/allsvenskan/stats",
+		requireAdmin(http.HandlerFunc(allsvenskanHandler.Stats)),
 	)
 
 	mux.Handle("POST /api/devices/{mac}/trust",
