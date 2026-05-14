@@ -7,6 +7,55 @@ import (
 	"time"
 )
 
+// Source represents a data origin with its metadata
+type Source struct {
+	Name             string  `json:"name"`
+	Domain           string  `json:"domain"`
+	SourceType       string  `json:"source_type"` // "OFFICIAL", "API", "MEDIA", "SOCIAL"
+	ReliabilityScore float64 `json:"reliability_score"`
+	UpdateFrequency  string  `json:"update_frequency"`
+}
+
+// Player represents a professional football player
+type Player struct {
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	Team           string            `json:"team"`
+	Position       string            `json:"position"`
+	Age            int               `json:"age"`
+	Foot           string            `json:"foot"`
+	MarketValue    string            `json:"market_value"`
+	AcquisitionFee string            `json:"acquisition_fee"`
+	Stats          PlayerStats       `json:"stats"`
+	RadarValues    map[string]float64 `json:"radar_values"` // Normalized 0-100
+}
+
+// PlayerStats contains performance metrics
+type PlayerStats struct {
+	MatchesPlayed int     `json:"matches_played"`
+	Minutes       int     `json:"minutes"`
+	Goals         int     `json:"goals"`
+	Assists       int     `json:"assists"`
+	XG            float64 `json:"xg"`
+	XA            float64 `json:"xa"`
+	Shots         int     `json:"shots"`
+	Passes        int     `json:"passes"`
+	Tackles       int     `json:"tackles"`
+	Interceptions int     `json:"interceptions"`
+	DuelsWon      int     `json:"duels_won"`
+	YellowCards   int     `json:"yellow_cards"`
+	RedCards      int     `json:"red_cards"`
+}
+
+type Match struct {
+	ID       string    `json:"id"`
+	Date     time.Time `json:"date"`
+	HomeTeam string    `json:"home_team"`
+	AwayTeam string    `json:"away_team"`
+	Result   string    `json:"result"`
+	Status   string    `json:"status"` // "SCHEDULED", "LIVE", "FINISHED"
+}
+
 type StandingsEntry struct {
 	Position int    `json:"position"`
 	Team     string `json:"team"`
@@ -18,49 +67,50 @@ type StandingsEntry struct {
 	Points   int    `json:"points"`
 }
 
-type Match struct {
-	Date     string `json:"date"`
-	HomeTeam string `json:"home_team"`
-	AwayTeam string `json:"away_team"`
-	Result   string `json:"result"`
+type Transfer struct {
+	PlayerName string    `json:"player_name"`
+	FromTeam   string    `json:"from_team"`
+	ToTeam     string    `json:"to_team"`
+	Fee        string    `json:"fee"`
+	Date       time.Time `json:"date"`
+	IsRumour   bool      `json:"is_rumour"`
 }
 
 type NewsItem struct {
+	Source      string    `json:"source"`
 	Title       string    `json:"title"`
 	Link        string    `json:"link"`
 	Description string    `json:"description"`
 	PubDate     time.Time `json:"pub_date"`
 }
 
-type Stats struct {
-	TopScorers []PlayerStat `json:"top_scorers"`
-	TopCards   []PlayerStat `json:"top_cards"`
-}
-
-type PlayerStat struct {
-	Name  string `json:"name"`
-	Team  string `json:"team"`
-	Value int    `json:"value"`
-}
-
 type Engine struct {
-	standings []StandingsEntry
-	matches   []Match
-	news      []NewsItem
-	stats     Stats
-	mu        sync.RWMutex
+	registry   []Source
+	standings  []StandingsEntry
+	matches    []Match
+	players    []Player
+	news       []NewsItem
+	transfers  []Transfer
+	mu         sync.RWMutex
 }
 
 func NewEngine() *Engine {
-	return &Engine{}
+	return &Engine{
+		registry: []Source{
+			{"SvFF", "svenskfotboll.se", "OFFICIAL", 1.0, "Daily"},
+			{"Allsvenskan", "allsvenskan.se", "OFFICIAL", 1.0, "Hourly"},
+			{"Transfermarkt", "transfermarkt.com", "MEDIA", 0.85, "Daily"},
+			{"Expressen", "expressen.se", "MEDIA", 0.8, "Hourly"},
+			{"Fotbollskanalen", "fotbollskanalen.se", "MEDIA", 0.8, "Hourly"},
+		},
+	}
 }
 
 func (e *Engine) Run(ctx context.Context) {
-	slog.Info("allsvenskan: Engine started")
+	slog.Info("allsvenskan: engine started")
 	ticker := time.NewTicker(30 * time.Minute)
 	defer ticker.Stop()
 
-	// Initial fetch
 	e.update(ctx)
 
 	for {
@@ -74,26 +124,44 @@ func (e *Engine) Run(ctx context.Context) {
 }
 
 func (e *Engine) update(ctx context.Context) {
-	news := ScrapeNews(ctx)
-	standings := ScrapeStandings(ctx)
-	matches := ScrapeMatches(ctx)
-	stats := ScrapeStats(ctx)
-
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	if len(news) > 0 {
-		e.news = news
+	e.news = ScrapeNews(ctx)
+	e.standings = ScrapeStandings(ctx)
+	e.matches = ScrapeMatches(ctx)
+	e.players = ScrapePlayerMarketData(ctx)
+
+	// Post-processing: Normalize radar values
+	for i := range e.players {
+		e.players[i].RadarValues = calculateRadarValues(e.players[i])
 	}
-	if len(standings) > 0 {
-		e.standings = standings
+}
+
+func calculateRadarValues(p Player) map[string]float64 {
+	// Normalization logic for spider charts
+	// Using placeholder math based on available stats
+	return map[string]float64{
+		"Attack":     normalize(float64(p.Stats.Goals), 0, 15),
+		"Creativity": normalize(p.Stats.XA, 0, 10),
+		"Possession": normalize(float64(p.Stats.Passes), 0, 1000),
+		"Defense":    normalize(float64(p.Stats.Tackles), 0, 50),
+		"Physical":   80.0, // Placeholder
 	}
-	if len(matches) > 0 {
-		e.matches = matches
+}
+
+func normalize(val, min, max float64) float64 {
+	if max == min {
+		return 0
 	}
-	if len(stats.TopScorers) > 0 {
-		e.stats = stats
+	res := ((val - min) / (max - min)) * 100
+	if res > 100 {
+		return 100
 	}
+	if res < 0 {
+		return 0
+	}
+	return res
 }
 
 func (e *Engine) GetStandings() []StandingsEntry {
@@ -114,8 +182,8 @@ func (e *Engine) GetMatches() []Match {
 	return e.matches
 }
 
-func (e *Engine) GetStats() Stats {
+func (e *Engine) GetPlayers() []Player {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.stats
+	return e.players
 }
