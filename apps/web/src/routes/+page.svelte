@@ -89,6 +89,7 @@
 	{/if}
 
 	<nav>
+		<a href="/allsvenskan" class="btn btn-allsvenskan">Allsvenskan &rarr;</a>
 		<a href="/advanced" class="btn btn-advanced">Avancerat &rarr;</a>
 		<a href="/admin" class="btn btn-admin">Admin &rarr;</a>
 	</nav>
@@ -202,6 +203,11 @@
 
 	.btn:hover {
 		filter: brightness(0.9);
+	}
+
+	.btn-allsvenskan {
+		background: #2d6a4f;
+		color: #fff;
 	}
 
 	.btn-advanced {

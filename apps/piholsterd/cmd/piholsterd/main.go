@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/piholster/piholster/apps/piholsterd/internal/alerts"
+	"github.com/piholster/piholster/apps/piholsterd/internal/allsvenskan"
 	"github.com/piholster/piholster/apps/piholsterd/internal/api"
 	"github.com/piholster/piholster/apps/piholsterd/internal/arp"
 	"github.com/piholster/piholster/apps/piholsterd/internal/auth"
@@ -63,6 +64,9 @@ func main() {
 	notifier := alerts.NewNotifier(tgClient, db)
 	go notifier.Run(appCtx, arpClient.Devices())
 
+	asEngine := allsvenskan.NewEngine()
+	go asEngine.Run(appCtx)
+
 	bl := internaldns.NewBlocklist()
 
 	blocklistPath := os.Getenv("BLOCKLIST_PATH")
@@ -83,7 +87,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := api.NewRouter(appCtx, db)
+	router := api.NewRouter(appCtx, db, asEngine)
 
 	// TLS configuration — read cert/key paths from environment.
 	// On Pi: set by piholsterd.service (TLS_CERT, TLS_KEY, HTTPS_PORT, HTTP_PORT).
