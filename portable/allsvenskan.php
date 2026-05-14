@@ -1,6 +1,7 @@
 <?php
 /**
- * Allsvenskan Aggregator - Final Optimized Version
+ * Allsvenskan Pro Hub - Advanced Player Intel & Spiders
+ * Includes: Market Value, Acquisition Fees, Live News & Standings
  */
 
 function fetch_data($url) {
@@ -15,27 +16,70 @@ function fetch_data($url) {
     return $data;
 }
 
-// Allsvenskan 2024/2025 Teams (Official)
-$all_teams = [
-    "AIK", "BK Häcken", "Djurgården", "GAIS", "Halmstads BK", "Hammarby",
-    "IF Brommapojkarna", "IF Elfsborg", "IFK Göteborg", "IFK Norrköping",
-    "IFK Värnamo", "IK Sirius", "Kalmar FF", "Malmö FF", "Mjällby AIF", "Västerås SK"
+$team_map = [
+    "AIK" => 271, "BK Häcken" => 1109, "Djurgården" => 1044, "GAIS" => 369,
+    "Halmstads BK" => 1011, "Hammarby" => 1059, "IF Brommapojkarna" => 1092,
+    "IF Elfsborg" => 1065, "IFK Göteborg" => 429, "IFK Norrköping" => 703,
+    "IFK Värnamo" => 2772, "IK Sirius" => 7945, "Kalmar FF" => 1473,
+    "Malmö FF" => 496, "Mjällby AIF" => 2719, "Västerås SK" => 1108
 ];
 
-// Fetch News from multiple sources
-$feeds = [
-    'Allsvenskan' => "https://allsvenskan.se/feed/",
-    'Expressen' => "https://www.expressen.se/rss/sport/fotboll/allsvenskan/"
-];
+$followed_team = isset($_GET['team']) ? $_GET['team'] : '';
 
-$all_news = [];
+// 1. SPIDER: Market Values (Top 25)
+$market_url = "https://www.transfermarkt.com/allsvenskan/marktwerte/wettbewerb/SE1";
+$market_html = fetch_data($market_url);
+$top_players = [];
+if ($market_html) {
+    preg_match_all('/<td class="hauptlink">.*?<a title="(.*?)" href="(.*?)">.*?<\/a>.*?<\/td>.*?<a title="(.*?)" href=".*?">.*?<\/a>.*?<td class="rechts hauptlink"><a.*?>(.*?)<\/a>/s', $market_html, $matches, PREG_SET_ORDER);
+    foreach ($matches as $m) {
+        $top_players[] = [
+            'name' => trim($m[1]),
+            'url'  => "https://www.transfermarkt.com" . $m[2],
+            'team' => trim($m[3]),
+            'value' => trim($m[4])
+        ];
+        if (count($top_players) >= 25) break;
+    }
+}
+
+// 2. SPIDER: Squad Intel (Market Value + Est. Purchase Fee)
+$squad = [];
+if ($followed_team && isset($team_map[$followed_team])) {
+    $id = $team_map[$followed_team];
+    $squad_url = "https://www.transfermarkt.com/team/startseite/verein/$id";
+    $squad_html = fetch_data($squad_url);
+    if ($squad_html) {
+        // Extract player info including joined-from fee if available in title tags
+        preg_match_all('/<td class="posrela">.*?<a title="(.*?)".*?<\/td>.*?<td class="hauptlink">.*?<a href="(.*?)">(.*?)<\/a>.*?<td class="rechts hauptlink">(.*?)<\/td>/s', $squad_html, $matches, PREG_SET_ORDER);
+        foreach ($matches as $m) {
+            $intel = $m[1]; // Joined from... fee: ...
+            $fee = "Okänd";
+            if (preg_match('/fee: (.*?)$/', $intel, $fee_match)) {
+                $fee = $fee_match[1];
+            }
+
+            $squad[] = [
+                'name'  => trim($m[3]),
+                'url'   => "https://www.transfermarkt.com" . $m[2],
+                'value' => trim($m[4]),
+                'intel' => $intel,
+                'fee'   => $fee
+            ];
+        }
+    }
+}
+
+// 3. SPIDER: Live News
+$feeds = ['Allsvenskan' => "https://allsvenskan.se/feed/", 'Expressen' => "https://www.expressen.se/rss/sport/fotboll/allsvenskan/"];
+$news = [];
 foreach ($feeds as $source => $url) {
     $xml_data = fetch_data($url);
     if ($xml_data) {
         $xml = @simplexml_load_string($xml_data);
         if ($xml) {
             foreach ($xml->channel->item as $item) {
-                $all_news[] = [
+                $news[] = [
                     'source' => $source,
                     'title' => (string)$item->title,
                     'link' => (string)$item->link,
@@ -47,32 +91,20 @@ foreach ($feeds as $source => $url) {
         }
     }
 }
+usort($news, function($a, $b) { return $b['timestamp'] - $a['timestamp']; });
+$news = array_slice($news, 0, 15);
 
-usort($all_news, function($a, $b) { return $b['timestamp'] - $a['timestamp']; });
-$news = array_slice($all_news, 0, 20);
-
-// For the table, since Cloudflare blocks simple scrapers on most sports sites,
-// we use a static initial set but the "Follow" logic works on everything.
+// Standings
 $table = [
-    ['pos'=>1, 'team'=>'Malmö FF', 'played'=>30, 'wins'=>19, 'draws'=>8, 'losses'=>3, 'gd'=>51, 'points'=>65],
-    ['pos'=>2, 'team'=>'Hammarby', 'played'=>30, 'wins'=>16, 'draws'=>6, 'losses'=>8, 'gd'=>23, 'points'=>54],
-    ['pos'=>3, 'team'=>'AIK', 'played'=>30, 'wins'=>17, 'draws'=>3, 'losses'=>10, 'gd'=>5, 'points'=>54],
-    ['pos'=>4, 'team'=>'Djurgården', 'played'=>30, 'wins'=>16, 'draws'=>5, 'losses'=>9, 'gd'=>10, 'points'=>53],
-    ['pos'=>5, 'team'=>'Mjällby AIF', 'played'=>30, 'wins'=>14, 'draws'=>8, 'losses'=>8, 'gd'=>11, 'points'=>50],
-    ['pos'=>6, 'team'=>'GAIS', 'played'=>30, 'wins'=>14, 'draws'=>6, 'losses'=>10, 'gd'=>2, 'points'=>48],
-    ['pos'=>7, 'team'=>'IF Elfsborg', 'played'=>30, 'wins'=>13, 'draws'=>6, 'losses'=>11, 'gd'=>8, 'points'=>45],
-    ['pos'=>8, 'team'=>'BK Häcken', 'played'=>30, 'wins'=>12, 'draws'=>6, 'losses'=>12, 'gd'=>3, 'points'=>42],
-    ['pos'=>9, 'team'=>'IK Sirius', 'played'=>30, 'wins'=>12, 'draws'=>5, 'losses'=>13, 'gd'=>1, 'points'=>41],
-    ['pos'=>10, 'team'=>'IFK Göteborg', 'played'=>30, 'wins'=>8, 'draws'=>10, 'losses'=>12, 'gd'=>-10, 'points'=>34],
-    ['pos'=>11, 'team'=>'IFK Norrköping', 'played'=>30, 'wins'=>9, 'draws'=>7, 'losses'=>14, 'gd'=>-21, 'points'=>34],
-    ['pos'=>12, 'team'=>'IF Brommapojkarna', 'played'=>30, 'wins'=>8, 'draws'=>10, 'losses'=>12, 'gd'=>-7, 'points'=>34],
-    ['pos'=>13, 'team'=>'IFK Värnamo', 'played'=>30, 'wins'=>7, 'draws'=>10, 'losses'=>13, 'gd'=>-10, 'points'=>31],
-    ['pos'=>14, 'team'=>'Halmstads BK', 'played'=>30, 'wins'=>10, 'draws'=>3, 'losses'=>17, 'gd'=>-18, 'points'=>33],
-    ['pos'=>15, 'team'=>'Kalmar FF', 'played'=>30, 'wins'=>8, 'draws'=>6, 'losses'=>16, 'gd'=>-20, 'points'=>30],
-    ['pos'=>16, 'team'=>'Västerås SK', 'played'=>30, 'wins'=>6, 'draws'=>5, 'losses'=>19, 'gd'=>-17, 'points'=>23]
+    ['pos'=>1, 'team'=>'Malmö FF', 'p'=>30, 'pts'=>65],
+    ['pos'=>2, 'team'=>'Hammarby', 'p'=>30, 'pts'=>54],
+    ['pos'=>3, 'team'=>'AIK', 'p'=>30, 'pts'=>54],
+    ['pos'=>4, 'team'=>'Djurgården', 'p'=>30, 'pts'=>53],
+    ['pos'=>5, 'team'=>'Mjällby AIF', 'p'=>30, 'pts'=>50],
+    ['pos'=>6, 'team'=>'GAIS', 'p'=>30, 'pts'=>48],
+    ['pos'=>7, 'team'=>'IF Elfsborg', 'p'=>30, 'pts'=>45],
+    ['pos'=>8, 'team'=>'BK Häcken', 'p'=>30, 'pts'=>42]
 ];
-
-$followed_team = isset($_GET['team']) ? $_GET['team'] : '';
 
 ?>
 <!DOCTYPE html>
@@ -80,74 +112,63 @@ $followed_team = isset($_GET['team']) ? $_GET['team'] : '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Allsvenskan Hub - <?= $followed_team ?: 'Alla Lag' ?></title>
+    <title>Allsvenskan Intel Hub</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted: #94a3b8; --accent: #38bdf8; --border: #334155; --highlight: #2d6a4f; }
-        body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; padding: 10px; line-height: 1.5; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { background: #020617; padding: 20px; border-radius: 12px; margin-bottom: 2rem; display: flex; flex-direction: column; gap: 1rem; }
-        h1 { color: var(--accent); margin: 0; font-size: 1.8rem; }
-        .team-selector { width: 100%; max-width: 300px; background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 1rem; }
-        .grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; }
-        @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
-        .card { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
-        h2 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; color: var(--accent); margin-top: 0; font-size: 1.3rem; }
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--border); }
-        th { color: var(--muted); text-transform: uppercase; font-size: 0.7rem; }
-        tr.highlight { background: var(--highlight); }
-        .points { font-weight: bold; color: var(--accent); }
-        .news-item { margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; --border: #334155; --gold: #f59e0b; --green: #10b981; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 10px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { background: #020617; padding: 25px; border-radius: 16px; margin-bottom: 25px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
+        h1 { margin: 0; font-size: 2rem; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        select { background: #1e293b; color: #fff; border: 1px solid var(--accent); padding: 12px 20px; border-radius: 10px; font-size: 1rem; cursor: pointer; outline: none; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        h2 { color: var(--accent); font-size: 1.2rem; margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; padding: 12px 5px; border-bottom: 2px solid var(--border); }
+        td { padding: 14px 5px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .val { color: var(--green); font-weight: 700; }
+        .fee { color: var(--gold); font-size: 0.8rem; }
+        .news-item { margin-bottom: 15px; border-left: 4px solid var(--accent); padding-left: 15px; }
         .news-item a { text-decoration: none; color: inherit; }
-        .news-item h3 { margin: 0 0 5px 0; font-size: 1.1rem; color: var(--text); }
-        .news-item a:hover h3 { color: var(--accent); }
-        .meta { display: flex; gap: 10px; font-size: 0.7rem; margin-bottom: 5px; }
-        .source { background: #334155; padding: 2px 8px; border-radius: 99px; color: #fff; font-weight: bold; }
-        .date { color: var(--muted); }
-        .news-item p { font-size: 0.9rem; color: var(--muted); margin: 8px 0 0 0; }
-        .btn-reset { color: var(--muted); text-decoration: none; font-size: 0.8rem; margin-top: 5px; display: inline-block; }
+        .news-item h3 { margin: 5px 0; font-size: 1.05rem; line-height: 1.4; }
+        .source-tag { font-size: 0.65rem; background: #334155; padding: 2px 8px; border-radius: 50px; color: #38bdf8; }
+        tr:hover { background: #2d3748; }
+        .scroll { max-height: 600px; overflow-y: auto; padding-right: 5px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <div>
-                <h1>Allsvenskan Hub</h1>
-                <p style="margin: 5px 0 0 0; color: var(--muted); font-size: 0.9rem;">Senaste nytt och aktuell tabell</p>
+                <h1>Allsvenskan Intel Hub</h1>
+                <p style="color: #94a3b8; margin: 5px 0 0 0;">Pro Spiders: Live Marknadsvärden, Inköpspriser & Nyheter</p>
             </div>
             <form method="GET">
-                <select name="team" class="team-selector" onchange="this.form.submit()">
-                    <option value="">Följ ett specifikt lag...</option>
-                    <?php foreach($all_teams as $t_name): ?>
-                        <option value="<?= $t_name ?>" <?= $followed_team == $t_name ? 'selected' : '' ?>><?= $t_name ?></option>
+                <select name="team" onchange="this.form.submit()">
+                    <option value="">Välj ett lag för truppanalys...</option>
+                    <?php foreach($team_map as $name => $id): ?>
+                        <option value="<?= $name ?>" <?= $followed_team == $name ? 'selected' : '' ?>><?= $name ?></option>
                     <?php endforeach; ?>
                 </select>
-                <?php if($followed_team): ?>
-                    <br><a href="index.php" class="btn-reset">Visa alla nyheter &times;</a>
-                <?php endif; ?>
             </form>
         </header>
 
         <div class="grid">
+            <!-- 1. Dyrast i Ligan -->
             <div class="card">
-                <h2>Tabell 2024</h2>
-                <div class="table-wrapper">
+                <h2>🏆 Mest värdefulla (Ligan)</h2>
+                <div class="scroll">
                     <table>
-                        <thead>
-                            <tr><th>#</th><th>Lag</th><th>S</th><th>V</th><th>O</th><th>F</th><th>+/-</th><th>P</th></tr>
-                        </thead>
+                        <thead><tr><th>Spelare</th><th>Lag</th><th>Värde</th></tr></thead>
                         <tbody>
-                            <?php foreach($table as $t): ?>
-                            <tr class="<?= ($followed_team && strpos($t['team'], $followed_team) !== false) ? 'highlight' : '' ?>">
-                                <td><?= $t['pos'] ?></td>
-                                <td><strong><?= $t['team'] ?></strong></td>
-                                <td><?= $t['played'] ?></td>
-                                <td><?= $t['wins'] ?></td>
-                                <td><?= $t['draws'] ?></td>
-                                <td><?= $t['losses'] ?></td>
-                                <td><?= $t['gd'] ?></td>
-                                <td class="points"><?= $t['points'] ?></td>
+                            <?php foreach($top_players as $p): ?>
+                            <tr>
+                                <td><a href="<?= $p['url'] ?>" target="_blank" style="color:inherit; text-decoration:none;"><strong><?= $p['name'] ?></strong></a></td>
+                                <td><small><?= $p['team'] ?></small></td>
+                                <td class="val"><?= $p['value'] ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -155,42 +176,56 @@ $followed_team = isset($_GET['team']) ? $_GET['team'] : '';
                 </div>
             </div>
 
+            <!-- 2. Lag Trupp med Inköpspris -->
             <div class="card">
-                <h2>Nyhetsflöde <?= $followed_team ? " för $followed_team" : "" ?></h2>
-                <?php
-                $count = 0;
-                foreach($news as $n):
-                    $show = true;
-                    if ($followed_team) {
-                        // Better matching logic for team names in titles/desc
-                        $search = strtolower($followed_team);
-                        if (strpos(strtolower($n['title'] . $n['desc']), $search) === false) {
-                            $show = false;
-                        }
-                    }
-                    if ($show):
-                        $count++;
-                ?>
-                <div class="news-item">
-                    <div class="meta">
-                        <span class="source"><?= $n['source'] ?></span>
-                        <span class="date"><?= $n['date'] ?></span>
+                <?php if($followed_team): ?>
+                    <h2>🛡️ Truppanalys: <?= $followed_team ?></h2>
+                    <div class="scroll">
+                        <table>
+                            <thead><tr><th>Spelare</th><th>Värde</th><th>Inköpt för</th></tr></thead>
+                            <tbody>
+                                <?php foreach($squad as $s): ?>
+                                <tr>
+                                    <td><a href="<?= $s['url'] ?>" target="_blank" style="color:inherit; text-decoration:none;"><?= $s['name'] ?></a></td>
+                                    <td class="val"><?= $s['value'] ?></td>
+                                    <td class="fee"><?= $s['fee'] ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
-                    <a href="<?= $n['link'] ?>" target="_blank">
-                        <h3><?= $n['title'] ?></h3>
-                    </a>
-                    <p><?= $n['desc'] ?></p>
+                <?php else: ?>
+                    <h2>📊 Tabell (Topp 8)</h2>
+                    <table>
+                        <thead><tr><th>#</th><th>Lag</th><th>S</th><th>P</th></tr></thead>
+                        <tbody>
+                            <?php foreach($table as $t): ?>
+                            <tr><td><?= $t['pos'] ?></td><td><strong><?= $t['team'] ?></strong></td><td><?= $t['p'] ?></td><td class="val"><?= $t['pts'] ?></td></tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 20px; color: #94a3b8; font-size: 0.9rem; text-align: center;">Välj ett lag ovan för att se detaljerad truppstatistik och inköpspriser.</p>
+                <?php endif; ?>
+            </div>
+
+            <!-- 3. Nyhetsflöde -->
+            <div class="card">
+                <h2>📰 Senaste Intel</h2>
+                <div class="scroll">
+                    <?php
+                    $count = 0;
+                    foreach($news as $n):
+                        if ($followed_team && strpos(strtolower($n['title'].$n['desc']), strtolower($followed_team)) === false) continue;
+                        $count++;
+                    ?>
+                    <div class="news-item">
+                        <div><span class="source-tag"><?= $n['source'] ?></span> <small style="color: #64748b;"><?= $n['date'] ?></small></div>
+                        <a href="<?= $n['link'] ?>" target="_blank"><h3><?= $n['title'] ?></h3></a>
+                        <p><?= substr($n['desc'], 0, 120) ?>...</p>
+                    </div>
+                    <?php endforeach; ?>
+                    <?php if($count == 0) echo "<p>Inga specifika nyheter för tillfället.</p>"; ?>
                 </div>
-                <?php
-                    endif;
-                endforeach;
-                if ($count == 0):
-                    echo "<div style='padding: 20px; text-align: center; color: var(--muted);'>";
-                    echo "<p>Inga specifika nyheter hittades för <strong>$followed_team</strong> just nu.</p>";
-                    echo "<p><a href='index.php' style='color: var(--accent)'>Se alla nyheter istället</a></p>";
-                    echo "</div>";
-                endif;
-                ?>
             </div>
         </div>
     </div>
