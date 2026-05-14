@@ -27,6 +27,5 @@ func (h *AllsvenskanHandler) Matches(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AllsvenskanHandler) Stats(w http.ResponseWriter, r *http.Request) {
-	// For now returns players which includes market data and radar values
-	writeJSON(w, http.StatusOK, h.engine.GetPlayers())
+	writeJSON(w, http.StatusOK, h.engine.GetStats())
 }

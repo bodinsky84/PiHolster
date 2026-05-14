@@ -187,3 +187,32 @@ func (e *Engine) GetPlayers() []Player {
 	defer e.mu.RUnlock()
 	return e.players
 }
+
+type AggregatedStats struct {
+	TopScorers []StatEntry `json:"top_scorers"`
+	TopCards   []StatEntry `json:"top_cards"`
+}
+
+type StatEntry struct {
+	Name  string `json:"name"`
+	Team  string `json:"team"`
+	Value int    `json:"value"`
+}
+
+func (e *Engine) GetStats() AggregatedStats {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// In a real scenario, we'd sort e.players by goals/cards
+	// Using mock logic for now since scraper only gets market values
+	return AggregatedStats{
+		TopScorers: []StatEntry{
+			{"Ioannis Pittas", "AIK", 7},
+			{"Erik Botheim", "Malmö FF", 6},
+		},
+		TopCards: []StatEntry{
+			{"Besard Sabovic", "Djurgården", 4},
+			{"Anton Tinnerholm", "Malmö FF", 4},
+		},
+	}
+}
